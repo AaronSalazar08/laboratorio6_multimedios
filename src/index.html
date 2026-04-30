@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>To-Do App</title>
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Tablero de Tareas</h1>
+        <div id="input-area">
+          <input
+            type="text"
+            id="task-input"
+            placeholder="Escribir nueva tarea..."
+            maxlength="120"
+          />
+          <button id="add-btn">Agregar</button>
+        </div>
+        <p id="input-error" class="hidden">La tarea no puede estar vacía.</p>
+      </header>
+
+      <div id="board">
+        <section class="column" id="col-pending" data-status="pending">
+          <div class="column-header">
+            <h2>Pendientes</h2>
+            <span class="badge" id="badge-pending">0</span>
+          </div>
+          <ul class="task-list" id="list-pending"></ul>
+        </section>
+
+        <section class="column" id="col-progress" data-status="progress">
+          <div class="column-header">
+            <h2>En progreso</h2>
+            <span class="badge" id="badge-progress">0</span>
+          </div>
+          <ul class="task-list" id="list-progress"></ul>
+        </section>
+
+        <section class="column" id="col-done" data-status="done">
+          <div class="column-header">
+            <h2>Completadas</h2>
+            <span class="badge" id="badge-done">0</span>
+          </div>
+          <ul class="task-list" id="list-done"></ul>
+        </section>
+      </div>
+
+      <footer>
+        <p>Tareas pendientes: <strong id="pending-count">0</strong></p>
+      </footer>
+    </div>
+
+    <template id="task-template">
+      <li class="task-card" draggable="true">
+        <input type="checkbox" class="task-checkbox" aria-label="Marcar como completada" />
+        <span class="task-text"></span>
+        <button class="delete-btn" aria-label="Eliminar tarea">✕</button>
+      </li>
+    </template>
+
+    <script type="module" src="modules/render/render.js"></script>
+  </body>
+</html>

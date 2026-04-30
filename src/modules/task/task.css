@@ -1,0 +1,73 @@
+@layer components {
+  .task-card {
+    background: var(--color-card);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: grab;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: box-shadow var(--transition-fast), opacity var(--transition-fast);
+    user-select: none;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &.dragging {
+      opacity: 0.45;
+      box-shadow: none;
+    }
+
+    &.done-card,
+    &:has(.task-checkbox:checked) {
+      opacity: 0.7;
+
+      .task-text {
+        text-decoration: line-through;
+        color: var(--color-text-muted);
+      }
+    }
+  }
+
+  .task-checkbox {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    cursor: pointer;
+    accent-color: var(--color-done);
+    flex-shrink: 0;
+  }
+
+  .task-text {
+    flex: 1;
+    font-size: var(--font-base);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--color-border);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color var(--transition-fast);
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+
+    &:hover {
+      color: var(--color-danger);
+    }
+  }
+}
