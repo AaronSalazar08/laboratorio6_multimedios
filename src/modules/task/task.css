@@ -1,73 +1,223 @@
 @layer components {
   .task-card {
+    --card-accent: var(--color-normal);
+
+    position: relative;
     background: var(--color-card);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: grab;
+    box-shadow: var(--shadow-xs);
+    transition: box-shadow var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast);
+    overflow: hidden;
+  }
+
+  .task-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--card-accent);
+  }
+
+  .task-card[data-priority="urgent"] { --card-accent: var(--color-urgent); }
+  .task-card[data-priority="high"]   { --card-accent: var(--color-high); }
+  .task-card[data-priority="normal"] { --card-accent: var(--color-normal); }
+  .task-card[data-priority="low"]    { --card-accent: var(--color-low); }
+
+  .task-card:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+  }
+
+  .task-card:active {
+    cursor: grabbing;
+  }
+
+  .task-card.dragging {
+    opacity: 0.45;
+    box-shadow: none;
+    transform: rotate(1.5deg);
+  }
+
+  .task-card.is-overdue {
+    background: var(--color-overdue-bg);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, transparent);
+  }
+
+  .task-card.is-done {
+    opacity: 0.7;
+  }
+
+  .task-card.is-done .task-title {
+    text-decoration: line-through;
+    color: var(--color-text-muted);
+  }
+
+  .task-card-head {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    cursor: grab;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    transition: box-shadow var(--transition-fast), opacity var(--transition-fast);
-    user-select: none;
-
-    @media (prefers-reduced-motion: reduce) {
-      transition: none;
-    }
-
-    &:active {
-      cursor: grabbing;
-    }
-
-    &.dragging {
-      opacity: 0.45;
-      box-shadow: none;
-    }
-
-    &.done-card,
-    &:has(.task-checkbox:checked) {
-      opacity: 0.7;
-
-      .task-text {
-        text-decoration: line-through;
-        color: var(--color-text-muted);
-      }
-    }
+    gap: 8px;
   }
 
-  .task-checkbox {
-    width: 16px;
-    height: 16px;
-    margin-top: 2px;
-    cursor: pointer;
-    accent-color: var(--color-done);
+  .priority-flag {
     flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    margin-top: 7px;
+    border-radius: 50%;
+    background: var(--card-accent);
   }
 
-  .task-text {
+  .task-title {
     flex: 1;
     font-size: var(--font-base);
-    line-height: 1.4;
+    font-weight: 600;
+    line-height: 1.35;
     word-break: break-word;
+    color: var(--color-text);
   }
 
-  .delete-btn {
-    background: none;
-    border: none;
-    color: var(--color-border);
-    font-size: 1rem;
+  .task-quick-edit {
+    width: 26px;
+    height: 26px;
+    font-size: 0.85rem;
+    margin-top: -2px;
+    margin-right: -4px;
+    opacity: 0;
+    transition: opacity var(--transition-fast), background var(--transition-fast);
+  }
+
+  .task-card:hover .task-quick-edit,
+  .task-card:focus-within .task-quick-edit {
+    opacity: 1;
+  }
+
+  .task-description {
+    font-size: var(--font-sm);
+    color: var(--color-text-muted);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .task-description:empty {
+    display: none;
+  }
+
+  .task-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .task-tags:empty {
+    display: none;
+  }
+
+  .task-tag-badge {
+    --tag-color: var(--color-text-subtle);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    background: color-mix(in srgb, var(--tag-color) 15%, transparent);
+    color: var(--tag-color);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
+  }
+
+  .task-tag-badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--tag-color);
+  }
+
+  .task-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-top: 2px;
+    font-size: var(--font-xs);
+    color: var(--color-text-muted);
+  }
+
+  .task-card-foot:empty {
+    display: none;
+  }
+
+  .task-due {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .task-due::before {
+    content: "🕐";
+    font-size: 0.7rem;
+  }
+
+  .task-due.is-overdue {
+    color: var(--color-danger);
+    font-weight: 600;
+  }
+
+  .task-priority-label {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--card-accent) 15%, transparent);
+    color: var(--card-accent);
+  }
+
+  .tag-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 600;
     cursor: pointer;
-    padding: 0 2px;
-    line-height: 1;
-    flex-shrink: 0;
-    transition: color var(--transition-fast);
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  }
 
-    @media (prefers-reduced-motion: reduce) {
-      transition: none;
-    }
+  .tag-pick::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--tag-color, var(--color-text-subtle));
+  }
 
-    &:hover {
-      color: var(--color-danger);
-    }
+  .tag-pick:hover {
+    border-color: var(--tag-color, var(--color-border-strong));
+  }
+
+  .tag-pick.is-selected {
+    background: var(--tag-color);
+    color: #fff;
+    border-color: var(--tag-color);
+  }
+
+  .tag-pick.is-selected::before {
+    background: #fff;
   }
 }

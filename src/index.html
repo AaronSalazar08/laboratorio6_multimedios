@@ -1,63 +1,262 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light" data-view="board">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>To-Do App</title>
+    <title>Taskboard — Gestor de tareas</title>
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
     <div id="app">
-      <header>
-        <h1>Tablero de Tareas</h1>
-        <div id="input-area">
-          <input
-            type="text"
-            id="task-input"
-            placeholder="Escribir nueva tarea..."
-            maxlength="120"
-          />
-          <button id="add-btn">Agregar</button>
+      <header class="app-header">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">◆</span>
+          <div>
+            <h1>Taskboard</h1>
+            <p class="brand-tag">Tu plan diario, en orden.</p>
+          </div>
         </div>
-        <p id="input-error" class="hidden">La tarea no puede estar vacía.</p>
+
+        <div class="header-actions">
+          <div class="search-wrap">
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input
+              type="search"
+              id="search-input"
+              placeholder="Buscar tareas..."
+              autocomplete="off"
+              aria-label="Buscar tareas"
+            />
+          </div>
+
+          <div class="view-toggle" role="tablist" aria-label="Vista">
+            <button type="button" class="view-btn is-active" data-view="board" role="tab" aria-selected="true">Tablero</button>
+            <button type="button" class="view-btn" data-view="list" role="tab" aria-selected="false">Lista</button>
+          </div>
+
+          <button type="button" id="theme-toggle" class="icon-btn" aria-label="Cambiar tema">
+            <span class="theme-icon" aria-hidden="true">☾</span>
+          </button>
+
+          <button type="button" id="new-task-btn" class="primary-btn">
+            <span aria-hidden="true">＋</span>
+            <span>Nueva tarea</span>
+          </button>
+        </div>
       </header>
 
-      <div id="board">
-        <section class="column" id="col-pending" data-status="pending">
-          <div class="column-header">
-            <h2>Pendientes</h2>
-            <span class="badge" id="badge-pending">0</span>
+      <section class="toolbar" aria-label="Filtros">
+        <div class="toolbar-group toolbar-tags">
+          <span class="toolbar-label">Etiquetas</span>
+          <div class="tag-filter-list" id="tag-filter-list" role="group" aria-label="Filtrar por etiqueta">
+            <button type="button" class="tag-chip is-active" data-tag-id="">Todas</button>
           </div>
-          <ul class="task-list" id="list-pending"></ul>
-        </section>
+          <button type="button" id="manage-tags-btn" class="ghost-btn" aria-label="Administrar etiquetas">
+            <span aria-hidden="true">⚙</span>
+            <span>Etiquetas</span>
+          </button>
+        </div>
 
-        <section class="column" id="col-progress" data-status="progress">
-          <div class="column-header">
-            <h2>En progreso</h2>
-            <span class="badge" id="badge-progress">0</span>
-          </div>
-          <ul class="task-list" id="list-progress"></ul>
-        </section>
+        <div class="toolbar-group">
+          <label class="select-wrap">
+            <span class="toolbar-label">Prioridad</span>
+            <select id="filter-priority">
+              <option value="">Todas</option>
+              <option value="urgent">Urgente</option>
+              <option value="high">Alta</option>
+              <option value="normal">Normal</option>
+              <option value="low">Baja</option>
+            </select>
+          </label>
 
-        <section class="column" id="col-done" data-status="done">
-          <div class="column-header">
-            <h2>Completadas</h2>
-            <span class="badge" id="badge-done">0</span>
-          </div>
-          <ul class="task-list" id="list-done"></ul>
-        </section>
-      </div>
+          <label class="select-wrap">
+            <span class="toolbar-label">Ordenar</span>
+            <select id="sort-mode">
+              <option value="created">Creación</option>
+              <option value="due">Fecha de entrega</option>
+              <option value="priority">Prioridad</option>
+            </select>
+          </label>
+        </div>
+      </section>
 
-      <footer>
-        <p>Tareas pendientes: <strong id="pending-count">0</strong></p>
+      <main>
+        <div id="board" class="board" data-active-tab="pending">
+          <nav class="board-tabs" aria-label="Estado">
+            <button type="button" class="board-tab is-active" data-status="pending">
+              <span>Pendientes</span>
+              <span class="tab-count" id="tab-count-pending">0</span>
+            </button>
+            <button type="button" class="board-tab" data-status="progress">
+              <span>En progreso</span>
+              <span class="tab-count" id="tab-count-progress">0</span>
+            </button>
+            <button type="button" class="board-tab" data-status="done">
+              <span>Completadas</span>
+              <span class="tab-count" id="tab-count-done">0</span>
+            </button>
+          </nav>
+
+          <section class="column" data-status="pending">
+            <header class="column-header">
+              <div class="column-title">
+                <span class="status-dot status-pending" aria-hidden="true"></span>
+                <h2>Pendientes</h2>
+              </div>
+              <span class="badge" id="badge-pending">0</span>
+            </header>
+            <ul class="task-list" id="list-pending"></ul>
+            <p class="empty-state" data-empty="pending">Sin tareas pendientes.</p>
+          </section>
+
+          <section class="column" data-status="progress">
+            <header class="column-header">
+              <div class="column-title">
+                <span class="status-dot status-progress" aria-hidden="true"></span>
+                <h2>En progreso</h2>
+              </div>
+              <span class="badge" id="badge-progress">0</span>
+            </header>
+            <ul class="task-list" id="list-progress"></ul>
+            <p class="empty-state" data-empty="progress">Sin tareas en progreso.</p>
+          </section>
+
+          <section class="column" data-status="done">
+            <header class="column-header">
+              <div class="column-title">
+                <span class="status-dot status-done" aria-hidden="true"></span>
+                <h2>Completadas</h2>
+              </div>
+              <span class="badge" id="badge-done">0</span>
+            </header>
+            <ul class="task-list" id="list-done"></ul>
+            <p class="empty-state" data-empty="done">Aún no hay tareas completadas.</p>
+          </section>
+        </div>
+
+        <section id="list-view" class="list-view" hidden>
+          <table class="task-table">
+            <thead>
+              <tr>
+                <th scope="col">Tarea</th>
+                <th scope="col">Etiquetas</th>
+                <th scope="col">Prioridad</th>
+                <th scope="col">Entrega</th>
+                <th scope="col">Estado</th>
+                <th scope="col" aria-label="Acciones"></th>
+              </tr>
+            </thead>
+            <tbody id="list-tbody"></tbody>
+          </table>
+          <p class="empty-state empty-state-list" id="list-empty">No hay tareas que coincidan con los filtros.</p>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <p>Pendientes activas: <strong id="pending-count">0</strong></p>
+        <p class="footer-hint">Arrastra una card entre columnas para cambiar su estado.</p>
       </footer>
     </div>
 
-    <template id="task-template">
+    <dialog id="task-modal" class="modal">
+      <form id="task-form" class="modal-content" method="dialog">
+        <header class="modal-header">
+          <h2 id="modal-title">Nueva tarea</h2>
+          <button type="button" class="icon-btn" id="modal-close" aria-label="Cerrar">✕</button>
+        </header>
+
+        <div class="form-grid">
+          <label class="field field-full">
+            <span class="field-label">Título <span class="required">*</span></span>
+            <input type="text" id="field-title" name="title" maxlength="120" required />
+          </label>
+
+          <label class="field field-full">
+            <span class="field-label">Descripción</span>
+            <textarea id="field-description" name="description" rows="3" maxlength="500"></textarea>
+          </label>
+
+          <label class="field">
+            <span class="field-label">Prioridad</span>
+            <select id="field-priority" name="priority">
+              <option value="urgent">Urgente</option>
+              <option value="high">Alta</option>
+              <option value="normal" selected>Normal</option>
+              <option value="low">Baja</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field-label">Fecha y hora de entrega</span>
+            <input type="datetime-local" id="field-due" name="dueDate" />
+          </label>
+
+          <label class="field">
+            <span class="field-label">Estado</span>
+            <select id="field-status" name="status">
+              <option value="pending">Pendiente</option>
+              <option value="progress">En progreso</option>
+              <option value="done">Completado</option>
+            </select>
+          </label>
+
+          <div class="field field-full">
+            <span class="field-label">Etiquetas</span>
+            <div class="tag-picker" id="field-tags"></div>
+            <p class="field-hint">Toca una etiqueta para asignarla. Administra el catálogo desde el botón “Etiquetas”.</p>
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <button type="button" id="delete-task-btn" class="danger-btn" hidden>Eliminar</button>
+          <div class="modal-footer-right">
+            <button type="button" class="ghost-btn" id="cancel-btn">Cancelar</button>
+            <button type="submit" class="primary-btn" id="save-btn">Guardar</button>
+          </div>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="tags-modal" class="modal">
+      <div class="modal-content">
+        <header class="modal-header">
+          <h2>Administrar etiquetas</h2>
+          <button type="button" class="icon-btn" id="tags-modal-close" aria-label="Cerrar">✕</button>
+        </header>
+
+        <form id="tag-create-form" class="tag-create">
+          <input
+            type="text"
+            id="tag-input"
+            placeholder="Ej. Cálculo II, TFG, Trabajo..."
+            maxlength="32"
+            aria-label="Nombre de la etiqueta"
+            required
+          />
+          <button type="submit" class="primary-btn">Crear</button>
+        </form>
+
+        <ul class="tag-admin-list" id="tag-admin-list"></ul>
+
+        <footer class="modal-footer">
+          <button type="button" class="ghost-btn" id="tags-done-btn">Listo</button>
+        </footer>
+      </div>
+    </dialog>
+
+    <template id="task-card-template">
       <li class="task-card" draggable="true">
-        <input type="checkbox" class="task-checkbox" aria-label="Marcar como completada" />
-        <span class="task-text"></span>
-        <button class="delete-btn" aria-label="Eliminar tarea">✕</button>
+        <div class="task-card-head">
+          <span class="priority-flag" data-role="priority"></span>
+          <h3 class="task-title" data-role="title"></h3>
+          <button type="button" class="icon-btn task-quick-edit" aria-label="Editar tarea" data-role="edit">✎</button>
+        </div>
+        <p class="task-description" data-role="description"></p>
+        <div class="task-tags" data-role="tags"></div>
+        <footer class="task-card-foot">
+          <span class="task-due" data-role="due"></span>
+          <span class="task-priority-label" data-role="priority-label"></span>
+        </footer>
       </li>
     </template>
 
