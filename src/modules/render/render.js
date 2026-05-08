@@ -1,17 +1,12 @@
-import { loadState, saveState } from '../storage/storage.js';
+import * as storage from '../storage/storage.js';
+import { OfflineError } from '../storage/storage.js';
 import {
-  PRIORITIES,
   STATUSES,
-  addTask,
-  updateTask,
-  deleteTask,
-  updateTaskStatus,
   getTaskById,
-  createTag,
-  deleteTag,
-  detachTagFromTasks,
   getTagById,
   isOverdue,
+  nextStatus,
+  prevStatus,
   filterTasks,
   sortTasks,
 } from '../task/task.js';
@@ -37,38 +32,43 @@ const $$ = sel => document.querySelectorAll(sel);
 const root = document.documentElement;
 
 const dom = {
-  searchInput:    $('#search-input'),
-  themeToggle:    $('#theme-toggle'),
-  themeIcon:      $('.theme-icon'),
-  newTaskBtn:     $('#new-task-btn'),
-  manageTagsBtn:  $('#manage-tags-btn'),
-  filterPriority: $('#filter-priority'),
-  sortMode:       $('#sort-mode'),
-  tagFilterList:  $('#tag-filter-list'),
-  board:          $('#board'),
-  listView:       $('#list-view'),
-  listTbody:      $('#list-tbody'),
-  listEmpty:      $('#list-empty'),
-  pendingCount:   $('#pending-count'),
-  cardTemplate:   $('#task-card-template'),
-  taskModal:      $('#task-modal'),
-  taskForm:       $('#task-form'),
-  modalTitle:     $('#modal-title'),
-  fieldTitle:     $('#field-title'),
+  offlineBanner:    $('#offline-banner'),
+  offlineBannerText:$('#offline-banner-text'),
+  toastContainer:   $('#toast-container'),
+  searchInput:      $('#search-input'),
+  themeToggle:      $('#theme-toggle'),
+  themeIcon:        $('.theme-icon'),
+  newTaskBtn:       $('#new-task-btn'),
+  manageTagsBtn:    $('#manage-tags-btn'),
+  filterPriority:   $('#filter-priority'),
+  sortMode:         $('#sort-mode'),
+  tagFilterList:    $('#tag-filter-list'),
+  board:            $('#board'),
+  listView:         $('#list-view'),
+  listTbody:        $('#list-tbody'),
+  listEmpty:        $('#list-empty'),
+  pendingCount:     $('#pending-count'),
+  cardTemplate:     $('#task-card-template'),
+  taskModal:        $('#task-modal'),
+  taskForm:         $('#task-form'),
+  modalTitle:       $('#modal-title'),
+  fieldTitle:       $('#field-title'),
   fieldDescription: $('#field-description'),
-  fieldPriority:  $('#field-priority'),
-  fieldDue:       $('#field-due'),
-  fieldStatus:    $('#field-status'),
-  fieldTags:      $('#field-tags'),
-  modalClose:     $('#modal-close'),
-  cancelBtn:      $('#cancel-btn'),
-  deleteTaskBtn:  $('#delete-task-btn'),
-  tagsModal:      $('#tags-modal'),
-  tagCreateForm:  $('#tag-create-form'),
-  tagInput:       $('#tag-input'),
-  tagAdminList:   $('#tag-admin-list'),
-  tagsModalClose: $('#tags-modal-close'),
-  tagsDoneBtn:    $('#tags-done-btn'),
+  fieldPriority:    $('#field-priority'),
+  fieldDue:         $('#field-due'),
+  fieldStatus:      $('#field-status'),
+  fieldTags:        $('#field-tags'),
+  modalClose:       $('#modal-close'),
+  cancelBtn:        $('#cancel-btn'),
+  deleteTaskBtn:    $('#delete-task-btn'),
+  taskFormError:    $('#task-form-error'),
+  tagsModal:        $('#tags-modal'),
+  tagCreateForm:    $('#tag-create-form'),
+  tagInput:         $('#tag-input'),
+  tagColorInput:    $('#tag-color-input'),
+  tagAdminList:     $('#tag-admin-list'),
+  tagsModalClose:   $('#tags-modal-close'),
+  tagsDoneBtn:      $('#tags-done-btn'),
   lists: {
     pending:  $('#list-pending'),
     progress: $('#list-progress'),
@@ -91,30 +91,20 @@ const dom = {
   },
 };
 
-const state = (() => {
-  const persisted = loadState();
-  return {
-    tasks: persisted.tasks,
-    tags: persisted.tags,
-    filters: { search: '', tagId: null, priority: null },
-    sort: 'created',
-    view: 'board',
-    activeTab: 'pending',
-    editingId: null,
-    formTagIds: [],
-    draggedId: null,
-  };
-})();
-
-function persist() {
-  saveState({ tasks: state.tasks, tags: state.tags });
-}
-
-function commit(next) {
-  Object.assign(state, next);
-  persist();
-  render();
-}
+const state = {
+  tasks: [],
+  tags: [],
+  online: false,
+  filters: { search: '', tagId: null, priority: null },
+  sort: 'created',
+  view: 'board',
+  activeTab: 'pending',
+  editingId: null,
+  formTagIds: [],
+  draggedId: null,
+  // Suprime parpadeo cuando un cambio local dispara su propio evento realtime de eco.
+  pendingRefresh: false,
+};
 
 /* ---------- Theme ---------- */
 
@@ -135,6 +125,44 @@ function toggleTheme() {
   const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
   localStorage.setItem(THEME_KEY, next);
   applyTheme(next);
+}
+
+/* ---------- Toasts ---------- */
+
+function showToast(message, { variant = 'info', duration = 4000 } = {}) {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${variant}`;
+  toast.setAttribute('role', variant === 'error' ? 'alert' : 'status');
+  toast.textContent = message;
+  dom.toastContainer.append(toast);
+
+  setTimeout(() => {
+    toast.classList.add('is-leaving');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
+  }, duration);
+}
+
+/* ---------- Offline banner ---------- */
+
+function setOnline(online, reason = null) {
+  state.online = online;
+  if (online) {
+    dom.offlineBanner.hidden = true;
+    return;
+  }
+  dom.offlineBanner.hidden = false;
+  dom.offlineBannerText.textContent = reason === 'no-credentials'
+    ? 'Supabase no está configurado. Configura .env.local para guardar tus tareas.'
+    : 'Sin conexión con Supabase. Modo solo lectura — tus cambios no se guardarán.';
+}
+
+function reportError(err, fallbackMessage) {
+  if (err instanceof OfflineError) {
+    showToast(err.message, { variant: 'error' });
+    return;
+  }
+  console.error(err);
+  showToast(fallbackMessage ?? 'Algo falló. Intenta de nuevo.', { variant: 'error' });
 }
 
 /* ---------- Formatting ---------- */
@@ -196,8 +224,11 @@ function buildCard(task) {
 
   card.dataset.id = task.id;
   card.dataset.priority = task.priority;
+  card.setAttribute('aria-label', `${task.title}, prioridad ${PRIORITY_LABELS[task.priority]}, estado ${STATUS_LABELS[task.status]}`);
+
   card.querySelector('[data-role="title"]').textContent = task.title;
   card.querySelector('[data-role="description"]').textContent = task.description ?? '';
+  card.querySelector('[data-role="edit-label"]').textContent = `Editar tarea ${task.title}`;
 
   renderTagBadges(card.querySelector('[data-role="tags"]'), task.tagIds);
 
@@ -211,10 +242,40 @@ function buildCard(task) {
 
   card.querySelector('[data-role="priority-label"]').textContent = PRIORITY_LABELS[task.priority];
 
+  configureNavButtons(card, task);
+
   if (task.status === 'done') { card.classList.add('is-done'); }
   if (isOverdue(task)) { card.classList.add('is-overdue'); }
 
   return card;
+}
+
+function configureNavButtons(card, task) {
+  const prev = prevStatus(task.status);
+  const next = nextStatus(task.status);
+
+  const prevBtn = card.querySelector('[data-role="move-prev"]');
+  const nextBtn = card.querySelector('[data-role="move-next"]');
+  const prevLabel = card.querySelector('[data-role="move-prev-label"]');
+  const nextLabel = card.querySelector('[data-role="move-next-label"]');
+
+  if (prev) {
+    prevBtn.disabled = false;
+    prevLabel.textContent = `Mover "${task.title}" a ${STATUS_LABELS[prev]}`;
+  } else {
+    prevBtn.disabled = true;
+    prevBtn.setAttribute('aria-disabled', 'true');
+    prevLabel.textContent = `No se puede mover hacia atrás desde ${STATUS_LABELS[task.status]}`;
+  }
+
+  if (next) {
+    nextBtn.disabled = false;
+    nextLabel.textContent = `Mover "${task.title}" a ${STATUS_LABELS[next]}`;
+  } else {
+    nextBtn.disabled = true;
+    nextBtn.setAttribute('aria-disabled', 'true');
+    nextLabel.textContent = `No se puede mover hacia adelante desde ${STATUS_LABELS[task.status]}`;
+  }
 }
 
 function renderBoard(tasks) {
@@ -230,9 +291,12 @@ function renderBoard(tasks) {
   });
 
   STATUSES.forEach(status => {
-    dom.badges[status].textContent = counts[status];
-    dom.tabCounts[status].textContent = counts[status];
-    dom.emptyStates[status].hidden = counts[status] > 0;
+    const count = counts[status];
+    const noun = count === 1 ? 'tarea' : 'tareas';
+    dom.badges[status].textContent = count;
+    dom.badges[status].setAttribute('aria-label', `${count} ${noun} en columna ${STATUS_LABELS[status]}`);
+    dom.tabCounts[status].textContent = count;
+    dom.emptyStates[status].hidden = count > 0;
   });
 
   dom.pendingCount.textContent = counts.pending + counts.progress;
@@ -367,19 +431,30 @@ function renderTagAdmin() {
     const li = document.createElement('li');
     li.className = 'tag-admin-item';
 
-    const name = document.createElement('span');
-    name.className = 'tag-admin-name';
-    const dot = document.createElement('span');
-    dot.style.cssText = `width:10px;height:10px;border-radius:50%;background:${tag.color};`;
-    name.append(dot, document.createTextNode(tag.name));
+    const nameWrap = document.createElement('span');
+    nameWrap.className = 'tag-admin-name';
+
+    const swatch = document.createElement('input');
+    swatch.type = 'color';
+    swatch.value = tag.color;
+    swatch.className = 'color-swatch color-swatch-sm';
+    swatch.setAttribute('aria-label', `Cambiar color de la etiqueta ${tag.name}`);
+    // 'change' (no 'input') para evitar saturar la red mientras el usuario arrastra el picker.
+    swatch.addEventListener('change', e => handleTagColorChange(tag.id, e.target.value));
+
+    const nameText = document.createElement('span');
+    nameText.textContent = tag.name;
+
+    nameWrap.append(swatch, nameText);
 
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'danger-btn';
     del.textContent = 'Eliminar';
+    del.setAttribute('aria-label', `Eliminar etiqueta ${tag.name}`);
     del.addEventListener('click', () => handleDeleteTag(tag.id));
 
-    li.append(name, del);
+    li.append(nameWrap, del);
     dom.tagAdminList.append(li);
   });
 }
@@ -417,6 +492,8 @@ function openTaskModal(id = null) {
   state.formTagIds           = task ? [...task.tagIds] : [];
 
   dom.deleteTaskBtn.hidden = !task;
+  dom.fieldTitle.removeAttribute('aria-invalid');
+  clearFormError();
 
   renderTagPicker();
   dom.taskModal.showModal();
@@ -429,10 +506,18 @@ function closeTaskModal() {
   state.formTagIds = [];
 }
 
-function handleTaskSubmit(e) {
+async function handleTaskSubmit(e) {
   e.preventDefault();
   const title = dom.fieldTitle.value.trim();
-  if (!title) { return; }
+  if (!title) {
+    showFormError('El título es obligatorio.');
+    dom.fieldTitle.setAttribute('aria-invalid', 'true');
+    dom.fieldTitle.focus();
+    return;
+  }
+
+  clearFormError();
+  dom.fieldTitle.removeAttribute('aria-invalid');
 
   const payload = {
     title,
@@ -443,24 +528,70 @@ function handleTaskSubmit(e) {
     status: dom.fieldStatus.value,
   };
 
-  if (state.editingId !== null) {
-    commit({ tasks: updateTask(state.tasks, state.editingId, payload) });
-  } else {
-    commit({ tasks: addTask(state.tasks, payload) });
-  }
+  const submitBtn = dom.taskForm.querySelector('#save-btn');
+  submitBtn.disabled = true;
 
-  closeTaskModal();
+  try {
+    if (state.editingId !== null) {
+      const updated = await storage.updateTask(state.editingId, payload);
+      state.tasks = state.tasks.map(t => (t.id === updated.id ? updated : t));
+      showToast('Tarea actualizada.', { variant: 'success' });
+    } else {
+      const created = await storage.addTask(payload);
+      state.tasks = [...state.tasks, created];
+      showToast('Tarea creada.', { variant: 'success' });
+    }
+    persistSnapshot();
+    closeTaskModal();
+    render();
+  } catch (err) {
+    reportError(err, 'No se pudo guardar la tarea.');
+  } finally {
+    submitBtn.disabled = false;
+  }
 }
 
-function handleTaskDelete() {
+function showFormError(message) {
+  dom.taskFormError.textContent = message;
+  dom.taskFormError.hidden = false;
+}
+
+function clearFormError() {
+  dom.taskFormError.textContent = '';
+  dom.taskFormError.hidden = true;
+}
+
+async function handleTaskDelete() {
   if (state.editingId === null) { return; }
-  commit({ tasks: deleteTask(state.tasks, state.editingId) });
-  closeTaskModal();
+  const idToDelete = state.editingId;
+
+  try {
+    await storage.deleteTask(idToDelete);
+    state.tasks = state.tasks.filter(t => t.id !== idToDelete);
+    persistSnapshot();
+    closeTaskModal();
+    render();
+    showToast('Tarea eliminada.', { variant: 'success' });
+  } catch (err) {
+    reportError(err, 'No se pudo eliminar la tarea.');
+  }
+}
+
+async function handleStatusMove(taskId, newStatus) {
+  try {
+    const updated = await storage.updateTaskStatus(taskId, newStatus);
+    state.tasks = state.tasks.map(t => (t.id === updated.id ? updated : t));
+    persistSnapshot();
+    render();
+  } catch (err) {
+    reportError(err, 'No se pudo cambiar el estado.');
+  }
 }
 
 /* ---------- Modal: tags ---------- */
 
 function openTagsModal() {
+  dom.tagColorInput.value = randomDefaultColor();
   renderTagAdmin();
   dom.tagsModal.showModal();
   dom.tagInput.focus();
@@ -470,29 +601,79 @@ function closeTagsModal() {
   dom.tagsModal.close();
 }
 
-function handleTagCreate(e) {
+async function handleTagCreate(e) {
   e.preventDefault();
   const name = dom.tagInput.value.trim();
   if (!name) { return; }
 
-  const nextTags = createTag(state.tags, name);
-  state.tags = nextTags;
-  persist();
-  dom.tagInput.value = '';
-  renderTagAdmin();
-  renderTagPicker();
-  renderTagFilter();
+  const color = dom.tagColorInput.value;
+
+  try {
+    const created = await storage.addTag(name, color);
+    state.tags = [...state.tags, created];
+    persistSnapshot();
+    dom.tagInput.value = '';
+    dom.tagColorInput.value = randomDefaultColor();
+    renderTagAdmin();
+    renderTagPicker();
+    renderTagFilter();
+  } catch (err) {
+    if (err?.code === '23505') {
+      reportError(new Error(), 'Ya existe una etiqueta con ese nombre.');
+    } else {
+      reportError(err, 'No se pudo crear la etiqueta.');
+    }
+  }
 }
 
-function handleDeleteTag(tagId) {
-  state.tags = deleteTag(state.tags, tagId);
-  state.tasks = detachTagFromTasks(state.tasks, tagId);
-  state.formTagIds = state.formTagIds.filter(id => id !== tagId);
-  if (state.filters.tagId === tagId) { state.filters.tagId = null; }
-  persist();
-  renderTagAdmin();
-  renderTagPicker();
-  render();
+async function handleTagColorChange(tagId, color) {
+  try {
+    const updated = await storage.updateTagColor(tagId, color);
+    state.tags = state.tags.map(t => (t.id === updated.id ? updated : t));
+    persistSnapshot();
+    renderTagAdmin();
+    renderTagPicker();
+    renderTagFilter();
+    render();
+  } catch (err) {
+    reportError(err, 'No se pudo actualizar el color.');
+  }
+}
+
+async function handleDeleteTag(tagId) {
+  try {
+    await storage.removeTag(tagId);
+    state.tags = state.tags.filter(t => t.id !== tagId);
+    state.tasks = state.tasks.map(t =>
+      t.tagIds.includes(tagId) ? { ...t, tagIds: t.tagIds.filter(id => id !== tagId) } : t,
+    );
+    state.formTagIds = state.formTagIds.filter(id => id !== tagId);
+    if (state.filters.tagId === tagId) { state.filters.tagId = null; }
+    persistSnapshot();
+    renderTagAdmin();
+    renderTagPicker();
+    render();
+  } catch (err) {
+    reportError(err, 'No se pudo eliminar la etiqueta.');
+  }
+}
+
+function randomDefaultColor() {
+  // Hue distribuido para que cada nueva etiqueta sugiera un color distinto al anterior.
+  const hue = Math.floor(Math.random() * 360);
+  return hslToHex(hue, 70, 55);
+}
+
+function hslToHex(h, s, l) {
+  s /= 100;
+  l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const v = l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return Math.round(255 * v).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
 }
 
 /* ---------- Drag & drop ---------- */
@@ -529,8 +710,9 @@ function handleDrop(e) {
   e.currentTarget.classList.remove('drag-over');
   if (state.draggedId === null) { return; }
   const newStatus = e.currentTarget.dataset.status;
-  commit({ tasks: updateTaskStatus(state.tasks, state.draggedId, newStatus) });
+  const id = state.draggedId;
   state.draggedId = null;
+  handleStatusMove(id, newStatus);
 }
 
 /* ---------- View / tab toggles ---------- */
@@ -551,6 +733,31 @@ function setActiveTab(status) {
   $$('.board-tab').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.status === status);
   });
+}
+
+/* ---------- Realtime sync ---------- */
+
+let refreshInFlight = false;
+async function refreshFromRemote() {
+  if (refreshInFlight) { return; }
+  refreshInFlight = true;
+  try {
+    const next = await storage.refresh();
+    state.tasks = next.tasks;
+    state.tags = next.tags;
+    setOnline(next.online, next.reason);
+    render();
+    if (dom.tagsModal.open) { renderTagAdmin(); }
+    if (dom.taskModal.open) { renderTagPicker(); }
+  } catch (err) {
+    console.warn('Refresh falló:', err);
+  } finally {
+    refreshInFlight = false;
+  }
+}
+
+function persistSnapshot() {
+  storage.persistSnapshot({ tasks: state.tasks, tags: state.tags });
 }
 
 /* ---------- Event wiring ---------- */
@@ -593,12 +800,24 @@ function wireEvents() {
   dom.manageTagsBtn.addEventListener('click', openTagsModal);
 
   dom.board.addEventListener('click', e => {
+    const moveBtn = e.target.closest('[data-role="move-prev"], [data-role="move-next"]');
+    if (moveBtn && !moveBtn.disabled) {
+      const card = moveBtn.closest('.task-card');
+      const id   = Number(card.dataset.id);
+      const task = getTaskById(state.tasks, id);
+      if (!task) { return; }
+      const target = moveBtn.dataset.role === 'move-next' ? nextStatus(task.status) : prevStatus(task.status);
+      if (target) { handleStatusMove(id, target); }
+      return;
+    }
+
     const editBtn = e.target.closest('[data-role="edit"]');
     if (editBtn) {
       const card = editBtn.closest('.task-card');
       if (card) { openTaskModal(Number(card.dataset.id)); }
       return;
     }
+
     const card = e.target.closest('.task-card');
     if (card) { openTaskModal(Number(card.dataset.id)); }
   });
@@ -615,6 +834,20 @@ function wireEvents() {
   dom.modalClose.addEventListener('click', closeTaskModal);
   dom.cancelBtn.addEventListener('click', closeTaskModal);
   dom.deleteTaskBtn.addEventListener('click', handleTaskDelete);
+  dom.fieldTitle.addEventListener('input', () => {
+    if (dom.fieldTitle.value.trim()) {
+      dom.fieldTitle.removeAttribute('aria-invalid');
+      clearFormError();
+    }
+  });
+
+  // El `required` nativo dispara `invalid` antes que `submit`. Sincronizamos a11y aquí.
+  dom.fieldTitle.addEventListener('invalid', e => {
+    e.preventDefault();
+    dom.fieldTitle.setAttribute('aria-invalid', 'true');
+    showFormError('El título es obligatorio.');
+    dom.fieldTitle.focus();
+  });
   dom.taskModal.addEventListener('click', e => {
     if (e.target === dom.taskModal) { closeTaskModal(); }
   });
@@ -646,10 +879,39 @@ function wireEvents() {
       dom.searchInput.focus();
     }
   });
+
+  // Si el usuario vuelve online (window online event), reintenta cargar.
+  window.addEventListener('online', refreshFromRemote);
 }
 
 /* ---------- Boot ---------- */
 
-initTheme();
-wireEvents();
-render();
+async function boot() {
+  initTheme();
+  wireEvents();
+  render();
+
+  try {
+    const initial = await storage.loadInitial();
+    state.tasks = initial.tasks;
+    state.tags = initial.tags;
+    setOnline(initial.online, initial.reason);
+    render();
+
+    if (initial.online) {
+      // Realtime: refrescar el estado cuando cambien las tablas.
+      // Estrategia simple: re-fetch completo. Funciona bien para volúmenes pequeños.
+      storage.subscribeRealtime(() => {
+        // Debounce ligero para colapsar ráfagas (insert + insert task_tags + update).
+        clearTimeout(window.__taskboardRefreshDebounce);
+        window.__taskboardRefreshDebounce = setTimeout(refreshFromRemote, 150);
+      });
+    }
+  } catch (err) {
+    console.error('Boot fallo:', err);
+    setOnline(false, 'fetch-failed');
+    showToast('No se pudo cargar inicial. Revisa tu conexión.', { variant: 'error' });
+  }
+}
+
+boot();

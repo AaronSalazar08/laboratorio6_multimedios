@@ -1,81 +1,25 @@
 export const PRIORITIES = ['urgent', 'high', 'normal', 'low'];
 export const STATUSES = ['pending', 'progress', 'done'];
 
-const TAG_PALETTE = [
-  '#ef4444', '#f97316', '#f59e0b', '#eab308',
-  '#84cc16', '#22c55e', '#10b981', '#14b8a6',
-  '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
-  '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
-];
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function nextId() {
-  return Date.now() + Math.floor(Math.random() * 1000);
-}
-
-export function createTask({ title, description = '', priority = 'normal', dueDate = null, tagIds = [], status = 'pending' }) {
-  const ts = nowIso();
-  return {
-    id: nextId(),
-    title: title.trim(),
-    description: description.trim(),
-    priority,
-    dueDate,
-    tagIds: [...tagIds],
-    status,
-    createdAt: ts,
-    updatedAt: ts,
-  };
-}
-
-export function addTask(tasks, payload) {
-  return [...tasks, createTask(payload)];
-}
-
-export function updateTask(tasks, id, patch) {
-  return tasks.map(t =>
-    t.id === id
-      ? { ...t, ...patch, tagIds: patch.tagIds ? [...patch.tagIds] : t.tagIds, updatedAt: nowIso() }
-      : t,
-  );
-}
-
-export function deleteTask(tasks, id) {
-  return tasks.filter(t => t.id !== id);
-}
-
-export function updateTaskStatus(tasks, id, status) {
-  return updateTask(tasks, id, { status });
-}
+/**
+ * Helpers puros sobre el modelo de tarea. La persistencia vive en `storage/`.
+ *
+ * Shape de Task (después de mapear desde Supabase):
+ *   {
+ *     id: number,
+ *     title: string,
+ *     description: string,
+ *     priority: 'urgent'|'high'|'normal'|'low',
+ *     dueDate: string ISO | null,
+ *     status: 'pending'|'progress'|'done',
+ *     tagIds: number[],
+ *     createdAt: string ISO,
+ *     updatedAt: string ISO,
+ *   }
+ */
 
 export function getTaskById(tasks, id) {
   return tasks.find(t => t.id === id) ?? null;
-}
-
-export function createTag(tags, name) {
-  const trimmed = name.trim();
-  if (!trimmed) { return tags; }
-
-  const exists = tags.some(t => t.name.toLowerCase() === trimmed.toLowerCase());
-  if (exists) { return tags; }
-
-  const color = TAG_PALETTE[tags.length % TAG_PALETTE.length];
-  return [...tags, { id: nextId(), name: trimmed, color }];
-}
-
-export function deleteTag(tags, tagId) {
-  return tags.filter(t => t.id !== tagId);
-}
-
-export function detachTagFromTasks(tasks, tagId) {
-  return tasks.map(t =>
-    t.tagIds.includes(tagId)
-      ? { ...t, tagIds: t.tagIds.filter(id => id !== tagId), updatedAt: nowIso() }
-      : t,
-  );
 }
 
 export function getTagById(tags, id) {
@@ -85,6 +29,16 @@ export function getTagById(tags, id) {
 export function isOverdue(task) {
   if (!task.dueDate || task.status === 'done') { return false; }
   return new Date(task.dueDate).getTime() < Date.now();
+}
+
+export function nextStatus(status) {
+  const i = STATUSES.indexOf(status);
+  return i < 0 || i === STATUSES.length - 1 ? null : STATUSES[i + 1];
+}
+
+export function prevStatus(status) {
+  const i = STATUSES.indexOf(status);
+  return i <= 0 ? null : STATUSES[i - 1];
 }
 
 export function priorityRank(priority) {

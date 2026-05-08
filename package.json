@@ -1,17 +1,21 @@
 {
-  "name": "lab6_multimedios",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "taskboard",
+  "version": "2.0.0",
+  "description": "Gestor personal de tareas con kanban, prioridades, tags y persistencia en Supabase.",
+  "type": "module",
   "scripts": {
-    "dev": "servor src/ index.html 1234 --reload",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.32.1",
   "devDependencies": {
-    "servor": "^4.0.2"
+    "vite": "^8.0.11"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.3"
   }
 }

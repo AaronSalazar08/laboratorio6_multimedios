@@ -8,6 +8,11 @@
   </head>
   <body>
     <div id="app">
+      <div id="offline-banner" class="offline-banner" role="status" hidden>
+        <span aria-hidden="true">⚠</span>
+        <span id="offline-banner-text">Modo solo lectura. Tus cambios no se guardarán.</span>
+      </div>
+
       <header class="app-header">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">◆</span>
@@ -19,13 +24,13 @@
 
         <div class="header-actions">
           <div class="search-wrap">
+            <label for="search-input" class="visually-hidden">Buscar tareas por título o descripción</label>
             <span class="search-icon" aria-hidden="true">⌕</span>
             <input
               type="search"
               id="search-input"
               placeholder="Buscar tareas..."
               autocomplete="off"
-              aria-label="Buscar tareas"
             />
           </div>
 
@@ -97,39 +102,39 @@
             </button>
           </nav>
 
-          <section class="column" data-status="pending">
+          <section class="column" data-status="pending" aria-labelledby="col-heading-pending">
             <header class="column-header">
               <div class="column-title">
                 <span class="status-dot status-pending" aria-hidden="true"></span>
-                <h2>Pendientes</h2>
+                <h2 id="col-heading-pending">Pendientes</h2>
               </div>
-              <span class="badge" id="badge-pending">0</span>
+              <span class="badge" id="badge-pending" aria-live="polite" aria-atomic="true" aria-label="0 tareas pendientes">0</span>
             </header>
-            <ul class="task-list" id="list-pending"></ul>
+            <ul class="task-list" id="list-pending" aria-labelledby="col-heading-pending"></ul>
             <p class="empty-state" data-empty="pending">Sin tareas pendientes.</p>
           </section>
 
-          <section class="column" data-status="progress">
+          <section class="column" data-status="progress" aria-labelledby="col-heading-progress">
             <header class="column-header">
               <div class="column-title">
                 <span class="status-dot status-progress" aria-hidden="true"></span>
-                <h2>En progreso</h2>
+                <h2 id="col-heading-progress">En progreso</h2>
               </div>
-              <span class="badge" id="badge-progress">0</span>
+              <span class="badge" id="badge-progress" aria-live="polite" aria-atomic="true" aria-label="0 tareas en progreso">0</span>
             </header>
-            <ul class="task-list" id="list-progress"></ul>
+            <ul class="task-list" id="list-progress" aria-labelledby="col-heading-progress"></ul>
             <p class="empty-state" data-empty="progress">Sin tareas en progreso.</p>
           </section>
 
-          <section class="column" data-status="done">
+          <section class="column" data-status="done" aria-labelledby="col-heading-done">
             <header class="column-header">
               <div class="column-title">
                 <span class="status-dot status-done" aria-hidden="true"></span>
-                <h2>Completadas</h2>
+                <h2 id="col-heading-done">Completadas</h2>
               </div>
-              <span class="badge" id="badge-done">0</span>
+              <span class="badge" id="badge-done" aria-live="polite" aria-atomic="true" aria-label="0 tareas completadas">0</span>
             </header>
-            <ul class="task-list" id="list-done"></ul>
+            <ul class="task-list" id="list-done" aria-labelledby="col-heading-done"></ul>
             <p class="empty-state" data-empty="done">Aún no hay tareas completadas.</p>
           </section>
         </div>
@@ -158,12 +163,14 @@
       </footer>
     </div>
 
-    <dialog id="task-modal" class="modal">
+    <dialog id="task-modal" class="modal" aria-labelledby="modal-title">
       <form id="task-form" class="modal-content" method="dialog">
         <header class="modal-header">
           <h2 id="modal-title">Nueva tarea</h2>
           <button type="button" class="icon-btn" id="modal-close" aria-label="Cerrar">✕</button>
         </header>
+
+        <p id="task-form-error" class="form-error" role="alert" hidden></p>
 
         <div class="form-grid">
           <label class="field field-full">
@@ -217,26 +224,34 @@
       </form>
     </dialog>
 
-    <dialog id="tags-modal" class="modal">
+    <dialog id="tags-modal" class="modal" aria-labelledby="tags-modal-title">
       <div class="modal-content">
         <header class="modal-header">
-          <h2>Administrar etiquetas</h2>
+          <h2 id="tags-modal-title">Administrar etiquetas</h2>
           <button type="button" class="icon-btn" id="tags-modal-close" aria-label="Cerrar">✕</button>
         </header>
 
         <form id="tag-create-form" class="tag-create">
+          <label for="tag-input" class="visually-hidden">Nombre de la nueva etiqueta</label>
           <input
             type="text"
             id="tag-input"
             placeholder="Ej. Cálculo II, TFG, Trabajo..."
             maxlength="32"
-            aria-label="Nombre de la etiqueta"
             required
+          />
+          <label for="tag-color-input" class="visually-hidden">Color de la nueva etiqueta</label>
+          <input
+            type="color"
+            id="tag-color-input"
+            class="color-swatch"
+            value="#6366f1"
+            title="Color de la etiqueta"
           />
           <button type="submit" class="primary-btn">Crear</button>
         </form>
 
-        <ul class="tag-admin-list" id="tag-admin-list"></ul>
+        <ul class="tag-admin-list" id="tag-admin-list" aria-labelledby="tags-modal-title"></ul>
 
         <footer class="modal-footer">
           <button type="button" class="ghost-btn" id="tags-done-btn">Listo</button>
@@ -247,9 +262,12 @@
     <template id="task-card-template">
       <li class="task-card" draggable="true">
         <div class="task-card-head">
-          <span class="priority-flag" data-role="priority"></span>
+          <span class="priority-flag" data-role="priority" aria-hidden="true"></span>
           <h3 class="task-title" data-role="title"></h3>
-          <button type="button" class="icon-btn task-quick-edit" aria-label="Editar tarea" data-role="edit">✎</button>
+          <button type="button" class="icon-btn task-quick-edit" data-role="edit">
+            <span aria-hidden="true">✎</span>
+            <span class="visually-hidden" data-role="edit-label">Editar tarea</span>
+          </button>
         </div>
         <p class="task-description" data-role="description"></p>
         <div class="task-tags" data-role="tags"></div>
@@ -257,9 +275,21 @@
           <span class="task-due" data-role="due"></span>
           <span class="task-priority-label" data-role="priority-label"></span>
         </footer>
+        <div class="task-nav" role="group" data-role="nav" aria-label="Mover tarea de columna">
+          <button type="button" class="task-nav-btn" data-role="move-prev">
+            <span aria-hidden="true">←</span>
+            <span class="visually-hidden" data-role="move-prev-label">Mover a la columna anterior</span>
+          </button>
+          <button type="button" class="task-nav-btn" data-role="move-next">
+            <span aria-hidden="true">→</span>
+            <span class="visually-hidden" data-role="move-next-label">Mover a la siguiente columna</span>
+          </button>
+        </div>
       </li>
     </template>
 
-    <script type="module" src="modules/render/render.js"></script>
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+    <script type="module" src="./modules/render/render.js"></script>
   </body>
 </html>

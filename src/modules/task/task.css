@@ -220,4 +220,52 @@
   .tag-pick.is-selected::before {
     background: #fff;
   }
+
+  .task-nav {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--color-border);
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity var(--transition-fast), max-height var(--transition-fast);
+  }
+
+  .task-card:hover .task-nav,
+  .task-card:focus-within .task-nav {
+    opacity: 1;
+    max-height: 50px;
+  }
+
+  /* Siempre visible cuando se navega por teclado, aunque no haya hover. */
+  @media (hover: none) {
+    .task-nav {
+      opacity: 1;
+      max-height: 50px;
+    }
+  }
+
+  .task-nav-btn {
+    flex: 1;
+    padding: 5px 8px;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+
+  .task-nav-btn:hover:not(:disabled) {
+    background: var(--color-accent);
+    color: #fff;
+  }
+
+  .task-nav-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
