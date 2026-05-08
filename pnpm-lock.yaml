@@ -12,9 +12,6 @@ importers:
         specifier: ^2.105.3
         version: 2.105.3
     devDependencies:
-      servor:
-        specifier: ^4.0.2
-        version: 4.0.2
       vite:
         specifier: ^8.0.11
         version: 8.0.11(@types/node@25.6.2)
@@ -288,10 +285,6 @@ packages:
   rolldown@1.0.0-rc.18:
     resolution: {integrity: sha512-phmyKBpuBdRYDf4hgyynGAYn/rDDe+iZXKVJ7WX5b1zQzpLkP5oJRPGsfJuHdzPMlyyEO/4sPW6yfSx2gf7lVg==}
     engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-
-  servor@4.0.2:
-    resolution: {integrity: sha512-MlmQ5Ntv4jDYUN060x/KEmN7emvIqKMZ9OkM+nY8Bf2+KkyLmGsTqWLyAN2cZr5oESAcH00UanUyyrlS1LRjFw==}
     hasBin: true
 
   source-map-js@1.2.1:
@@ -586,8 +579,6 @@ snapshots:
       '@rolldown/binding-wasm32-wasi': 1.0.0-rc.18
       '@rolldown/binding-win32-arm64-msvc': 1.0.0-rc.18
       '@rolldown/binding-win32-x64-msvc': 1.0.0-rc.18
-
-  servor@4.0.2: {}
 
   source-map-js@1.2.1: {}
 
